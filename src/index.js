@@ -1,5 +1,5 @@
 import pkg from '@whiskeysockets/baileys';
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = pkg;
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = pkg?.default ? pkg.default : pkg;
 import { Boom } from '@hapi/boom';
 import TelegramBot from 'node-telegram-bot-api';
 import Anthropic from '@anthropic-ai/sdk';
