@@ -1,0 +1,19 @@
+{
+  "name": "piano-assistant",
+  "version": "1.0.0",
+  "description": "Asistente IA para clases de piano - WhatsApp + Telegram + Claude",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.0",
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^6.7.9",
+    "node-telegram-bot-api": "^0.64.0",
+    "pino": "^9.3.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
