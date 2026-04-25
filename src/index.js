@@ -1,10 +1,9 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
-const { Boom } = require('@hapi/boom');
-const TelegramBot = require('node-telegram-bot-api');
-const Anthropic = require('@anthropic-ai/sdk');
-const fs = require('fs');
-const path = require('path');
-const pino = require('pino');
+import pkg from '@whiskeysockets/baileys';
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = pkg;
+import { Boom } from '@hapi/boom';
+import TelegramBot from 'node-telegram-bot-api';
+import Anthropic from '@anthropic-ai/sdk';
+import pino from 'pino';
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
@@ -17,12 +16,9 @@ const MAMAS = {
 };
 
 // ─── ESTADO EN MEMORIA ────────────────────────────────────────────────────────
-// pendingMap: telegramMsgId → { waId, waMsg, mamaInfo, suggestion }
 const pendingMap = new Map();
-// historyMap: waId → [ {role, content}, ... ]
 const historyMap = new Map();
-
-let waSock = null; // socket de WhatsApp
+let waSock = null;
 
 // ─── CLIENTES ─────────────────────────────────────────────────────────────────
 const telegram = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
@@ -68,7 +64,6 @@ async function generateSuggestion(waId, mamaInfo, incomingMsg) {
   const suggestion = response.content[0].text.trim();
   history.push({ role: 'assistant', content: suggestion });
 
-  // Guardar máximo 20 turnos por conversación
   if (history.length > 20) history.splice(0, 2);
 
   return suggestion;
@@ -107,12 +102,10 @@ telegram.on('message', async (msg) => {
   const text = (msg.text || '').trim();
   if (!text) return;
 
-  // Buscar el pending más reciente si no es reply
   let pending = null;
   if (msg.reply_to_message) {
     pending = pendingMap.get(msg.reply_to_message.message_id);
   } else {
-    // Tomar el último pending
     const entries = [...pendingMap.entries()];
     if (entries.length > 0) {
       const last = entries[entries.length - 1];
@@ -130,7 +123,7 @@ telegram.on('message', async (msg) => {
   if (lower === 'ok') {
     await sendWhatsApp(pending.waId, pending.suggestion);
     telegram.sendMessage(TELEGRAM_MY_ID, `✅ Enviado a ${pending.mamaInfo.nombre}.`);
-    pendingMap.delete(msg.reply_to_message?.message_id);
+    if (msg.reply_to_message) pendingMap.delete(msg.reply_to_message.message_id);
 
   } else if (lower.startsWith('editar:')) {
     const customText = text.slice(7).trim();
@@ -138,15 +131,13 @@ telegram.on('message', async (msg) => {
       telegram.sendMessage(TELEGRAM_MY_ID, '⚠️ Escribe el texto después de "editar:"');
       return;
     }
-    // Actualizar historial con la versión editada
     const history = historyMap.get(pending.waId) || [];
     if (history.length > 0) history[history.length - 1] = { role: 'assistant', content: customText };
     await sendWhatsApp(pending.waId, customText);
     telegram.sendMessage(TELEGRAM_MY_ID, `✅ Enviado a ${pending.mamaInfo.nombre} con tu versión.`);
-    pendingMap.delete(msg.reply_to_message?.message_id);
+    if (msg.reply_to_message) pendingMap.delete(msg.reply_to_message.message_id);
 
   } else if (lower === 'regenerar') {
-    // Quitar la última respuesta del historial para regenerar
     const history = historyMap.get(pending.waId) || [];
     if (history.length >= 2) history.splice(-2, 2);
     try {
@@ -187,7 +178,7 @@ async function connectWhatsApp() {
     const { connection, lastDisconnect, qr } = update;
     if (qr) {
       console.log('\n📱 Escanea el QR de arriba con WhatsApp en tu celular\n');
-      telegram.sendMessage(TELEGRAM_MY_ID, '⚠️ WhatsApp desconectado. Revisa la terminal para escanear el QR.').catch(() => {});
+      telegram.sendMessage(TELEGRAM_MY_ID, '⚠️ WhatsApp desconectado. Revisa los logs para escanear el QR.').catch(() => {});
     }
     if (connection === 'close') {
       const shouldReconnect = (lastDisconnect?.error instanceof Boom)
@@ -206,12 +197,12 @@ async function connectWhatsApp() {
     if (type !== 'notify') return;
 
     for (const msg of messages) {
-      if (msg.key.fromMe) continue; // ignorar mensajes propios
+      if (msg.key.fromMe) continue;
       if (!msg.message) continue;
 
       const waId = msg.key.remoteJid.replace('@s.whatsapp.net', '');
       const mamaInfo = MAMAS[waId];
-      if (!mamaInfo) continue; // ignorar números que no son las mamás
+      if (!mamaInfo) continue;
 
       const incomingMsg =
         msg.message?.conversation ||
