@@ -3,6 +3,8 @@ import { Boom } from '@hapi/boom';
 import TelegramBot from 'node-telegram-bot-api';
 import Anthropic from '@anthropic-ai/sdk';
 import pino from 'pino';
+import qrcode from 'qrcode';
+import { createWriteStream, unlinkSync, existsSync } from 'fs';
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
@@ -166,7 +168,6 @@ async function connectWhatsApp() {
     version,
     auth: state,
     logger: pino({ level: 'silent' }),
-    printQRInTerminal: true,
   });
 
   waSock = sock;
@@ -176,8 +177,19 @@ async function connectWhatsApp() {
   sock.ev.on('connection.update', (update) => {
     const { connection, lastDisconnect, qr } = update;
     if (qr) {
-      console.log('\n📱 Escanea el QR de arriba con WhatsApp en tu celular\n');
-      telegram.sendMessage(TELEGRAM_MY_ID, '⚠️ WhatsApp desconectado. Revisa los logs para escanear el QR.').catch(() => {});
+      console.log('\n📱 Generando QR para enviar por Telegram...\n');
+      try {
+        const qrPath = '/tmp/qr.png';
+        await qrcode.toFile(qrPath, qr, { width: 400 });
+        await telegram.sendPhoto(TELEGRAM_MY_ID, qrPath, {
+          caption: '📱 *Escanea este QR con WhatsApp*\n\nAbre WhatsApp → Dispositivos vinculados → Vincular dispositivo',
+          parse_mode: 'Markdown',
+        });
+        if (existsSync(qrPath)) unlinkSync(qrPath);
+      } catch (e) {
+        console.error('Error enviando QR:', e.message);
+        telegram.sendMessage(TELEGRAM_MY_ID, '⚠️ No pude enviar el QR. Revisa los logs.').catch(() => {});
+      }
     }
     if (connection === 'close') {
       const shouldReconnect = (lastDisconnect?.error instanceof Boom)
