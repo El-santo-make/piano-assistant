@@ -2,7 +2,7 @@ import TelegramBot from 'node-telegram-bot-api';
 
 const TELEGRAM_TOKEN_RESUMENES = process.env.TELEGRAM_TOKEN_RESUMENES;
 const TELEGRAM_MY_ID            = process.env.TELEGRAM_MY_ID;
-const GEMINI_KEY                = process.env.GEMINI_API_KEY;
+const GROQ_KEY                  = process.env.GROQ_API_KEY;
 
 // Hora diaria: 14:00 Bolivia = 18:00 UTC
 const SUMMARY_HOUR_UTC = 18;
@@ -15,19 +15,23 @@ const chatNames = new Map();
 export const resumenesBotTelegram = new TelegramBot(TELEGRAM_TOKEN_RESUMENES, { polling: true });
 
 // ─── GEMINI ───────────────────────────────────────────────────────────────────
-async function geminiSummarize(prompt) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
-  const res  = await fetch(url, {
+async function groqSummarize(prompt) {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${GROQ_KEY}`,
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 600, temperature: 0.3 },
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 600,
+      temperature: 0.3,
     }),
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Sin contenido.';
+  return data.choices?.[0]?.message?.content?.trim() || 'Sin respuesta.';
 }
 
 // ─── REGISTRAR NOMBRE DE CHAT ─────────────────────────────────────────────────
@@ -50,7 +54,7 @@ async function summarizeChat(chatId) {
     `Máximo 5 puntos. Si no hay nada importante, dilo en una línea.\n\n` +
     `CONVERSACIÓN:\n${transcript}`;
 
-  const summary = await geminiSummarize(prompt);
+  const summary = await groqSummarize(prompt);
   chatBuffer.set(chatId, []); // limpiar después de resumir
   return { label, count: messages.length, summary };
 }
