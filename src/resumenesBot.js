@@ -39,6 +39,11 @@ export function registerChatName(chatId, name) {
   if (!chatNames.has(chatId)) chatNames.set(chatId, name);
 }
 
+// Escapa caracteres especiales de Markdown para Telegram
+function escMd(text) {
+  return String(text).replace(/[_*[\]()~`>#+=|{}.!\\-]/g, '\\$&');
+}
+
 // ─── RESUMIR UN CHAT ──────────────────────────────────────────────────────────
 async function summarizeChat(chatId) {
   const messages = chatBuffer.get(chatId);
@@ -77,8 +82,8 @@ async function sendAllSummaries() {
       if (!result) continue;
       await resumenesBotTelegram.sendMessage(
         TELEGRAM_MY_ID,
-        `*${result.label}* (${result.count} mensajes)\n\n${result.summary}`,
-        { parse_mode: 'Markdown' }
+        `*${escMd(result.label)}* (${result.count} mensajes)\n\n${escMd(result.summary)}`,
+        { parse_mode: 'MarkdownV2' }
       );
     } catch (e) {
       resumenesBotTelegram.sendMessage(TELEGRAM_MY_ID, `❌ Error en "${chatNames.get(chatId) || chatId}": ${e.message}`).catch(() => {});
@@ -176,8 +181,8 @@ resumenesBotTelegram.on('message', async (msg) => {
       if (result) {
         resumenesBotTelegram.sendMessage(
           TELEGRAM_MY_ID,
-          `*${result.label}* (${result.count} mensajes)\n\n${result.summary}`,
-          { parse_mode: 'Markdown' }
+          `*${escMd(result.label)}* (${result.count} mensajes)\n\n${escMd(result.summary)}`,
+          { parse_mode: 'MarkdownV2' }
         );
       }
     } catch (e) {
