@@ -39,11 +39,6 @@ export function registerChatName(chatId, name) {
   if (!chatNames.has(chatId)) chatNames.set(chatId, name);
 }
 
-// Escapa caracteres especiales de Markdown para Telegram
-function escMd(text) {
-  return String(text).replace(/[_*[\]()~`>#+=|{}.!\\-]/g, '\\$&');
-}
-
 // ─── RESUMIR UN CHAT ──────────────────────────────────────────────────────────
 async function summarizeChat(chatId) {
   const messages = chatBuffer.get(chatId);
@@ -74,7 +69,7 @@ async function sendAllSummaries() {
   }
 
   const hora = new Date().toLocaleString('es-BO', { timeZone: 'America/La_Paz', hour: '2-digit', minute: '2-digit' });
-  await resumenesBotTelegram.sendMessage(TELEGRAM_MY_ID, `📋 *Resumen diario — ${hora}*`, { parse_mode: 'Markdown' });
+  await resumenesBotTelegram.sendMessage(TELEGRAM_MY_ID, `📋 Resumen diario — ${hora}`);
 
   for (const [chatId] of activos) {
     try {
@@ -82,8 +77,7 @@ async function sendAllSummaries() {
       if (!result) continue;
       await resumenesBotTelegram.sendMessage(
         TELEGRAM_MY_ID,
-        `*${escMd(result.label)}* (${result.count} mensajes)\n\n${escMd(result.summary)}`,
-        { parse_mode: 'MarkdownV2' }
+        `📌 ${result.label} (${result.count} mensajes)\n\n${result.summary}`
       );
     } catch (e) {
       resumenesBotTelegram.sendMessage(TELEGRAM_MY_ID, `❌ Error en "${chatNames.get(chatId) || chatId}": ${e.message}`).catch(() => {});
@@ -181,8 +175,7 @@ resumenesBotTelegram.on('message', async (msg) => {
       if (result) {
         resumenesBotTelegram.sendMessage(
           TELEGRAM_MY_ID,
-          `*${escMd(result.label)}* (${result.count} mensajes)\n\n${escMd(result.summary)}`,
-          { parse_mode: 'MarkdownV2' }
+          `📌 ${result.label} (${result.count} mensajes)\n\n${result.summary}`
         );
       }
     } catch (e) {
