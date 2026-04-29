@@ -48,10 +48,16 @@ async function summarizeChat(chatId) {
   const transcript = messages.map(m => `[${m.time}] ${m.sender}: ${m.text}`).join('\n');
 
   const prompt =
-    `Eres un asistente que resume conversaciones de WhatsApp para Santiago, un joven universitario boliviano.\n\n` +
-    `Resume la conversación del chat "${label}" de forma clara y concisa.\n` +
-    `Destaca: temas principales, decisiones, preguntas sin responder, cosas que requieren acción de Santiago.\n` +
-    `Máximo 5 puntos. Si no hay nada importante, dilo en una línea.\n\n` +
+    `Eres un asistente que le cuenta a Santiago qué pasó en sus chats de WhatsApp. Santiago es un joven boliviano universitario.\n\n` +
+    `Describe brevemente qué se dijo en el chat "${label}" en 2 a 4 líneas máximo.\n\n` +
+    `Reglas:\n` +
+    `- Escribe en español natural y directo, como si se lo contaras a un amigo\n` +
+    `- NO uses Markdown, asteriscos, negritas ni viñetas\n` +
+    `- NO uses frases como "los puntos clave son", "en resumen", "cabe destacar"\n` +
+    `- NO digas si requiere acción o no — solo cuenta lo que pasó\n` +
+    `- Si fue una conversación corta o trivial, di quién dijo qué en pocas palabras\n` +
+    `- Si fue algo relevante, menciona de qué se trató y quién participó\n` +
+    `- Nunca digas que no hay información relevante — simplemente describe lo que hay\n\n` +
     `CONVERSACIÓN:\n${transcript}`;
 
   const summary = await groqSummarize(prompt);
@@ -82,7 +88,7 @@ async function sendAllSummaries() {
     } catch (e) {
       resumenesBotTelegram.sendMessage(TELEGRAM_MY_ID, `❌ Error en "${chatNames.get(chatId) || chatId}": ${e.message}`).catch(() => {});
     }
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise(r => setTimeout(r, 3000));
   }
 }
 
